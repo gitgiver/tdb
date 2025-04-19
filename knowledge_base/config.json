@@ -1,0 +1,7 @@
+{
+  "num_txt_files": 18,
+  "num_excel_files": 1,
+  "num_chunks": 907,
+  "vector_dim": 384,
+  "dense_weight": 0.7
+}
