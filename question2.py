@@ -346,7 +346,7 @@ class VectorDatabase:
         except Exception as e:
             logger.error(f"添加文档到向量数据库时出错: {e}")
 
-    def search(self, query_vector: np.ndarray, top_k: int = 10) -> List[Dict[str, Any]]:
+    def search(self, query_vector: np.ndarray, top_k: int = 8) -> List[Dict[str, Any]]:
         """
         搜索最相似的文档
 
@@ -484,7 +484,7 @@ class BM25Retriever:
 
         logger.info("BM25模型训练完成")
 
-    def search(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 8) -> List[Dict[str, Any]]:
         """
         使用BM25算法搜索相关文档
 
@@ -536,7 +536,7 @@ class HybridRetriever:
         self.dense_weight = dense_weight
         logger.info(f"混合检索系统初始化完成，稠密检索权重: {dense_weight}")
 
-    def search(self, query: str, top_k: int = 10, threshold: float = 0.5) -> List[Dict]:
+    def search(self, query: str, top_k: int = 8, threshold: float = 0.5) -> List[Dict]:
         """
         执行混合检索
 
@@ -774,7 +774,7 @@ class RetrievalSystem:
 
     def search(self,
                query: str,
-               top_k: int = 10,
+               top_k: int = 8,
                hybrid_weight: float = 0.7) -> List[Dict[str, Any]]:
         """
         混合检索
@@ -790,6 +790,10 @@ class RetrievalSystem:
         if not self.index_built or not self.docs:
             logger.warning("索引未构建或没有文档，无法执行检索")
             return []
+
+        pattern = re.compile(r'[^\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]')###去除所有非中文字符本程序居然影响这么大我去！！！！
+        query = re.sub(pattern, '', query)
+        logger.info(f"去除引号后的查询: {query}")
 
         # 增强查询，添加同义词和结构信息
         enhanced_query = self.keyword_enhancer.enhance_query(query)
@@ -826,7 +830,7 @@ class RetrievalSystem:
             # 如果没有精确匹配，返回混合排序结果
             return self._hybrid_rank(vector_results, keyword_results, hybrid_weight)[:top_k]
 
-    def _vector_search(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    def _vector_search(self, query: str, top_k: int = 8) -> List[Dict[str, Any]]:
         """
         向量检索
 
@@ -839,7 +843,7 @@ class RetrievalSystem:
         """
         # 提取竞赛名称
         competition_name = None
-        competition_match = re.search(r'[""]?([^""]+?(?:专项赛|挑战赛|竞赛|大赛))[""]?', query)
+        competition_match = re.search(r'([^""]+?(?:专项赛|挑战赛|竞赛|大赛))', query)
         if competition_match:
             competition_name = competition_match.group(1)
 
@@ -884,8 +888,8 @@ class RetrievalSystem:
             # 特殊处理未来校园智能应用专项赛
             competition_bonus = 0
             if competition_name:
-                clean_comp = competition_name.replace('"', '').replace('"', '')
-
+                clean_comp = competition_name  # 已经清理过引号
+                
                 # 未来校园智能应用专项赛特殊处理
                 if "未来校园" in clean_comp:
                     if "未来校园" in source or "未来校园" in text:
@@ -948,7 +952,7 @@ class RetrievalSystem:
 
         return results[:top_k]
 
-    def _keyword_search(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    def _keyword_search(self, query: str, top_k: int = 8) -> List[Dict[str, Any]]:
         """
         关键词检索，已增强同义词扩展
 
@@ -1021,7 +1025,7 @@ class RetrievalSystem:
 
         return results
 
-    def _exact_match_search(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+    def _exact_match_search(self, query: str, top_k: int = 8) -> List[Dict[str, Any]]:
         """
         精确匹配搜索，优先匹配竞赛名称和任务编号
 
@@ -1035,8 +1039,8 @@ class RetrievalSystem:
         # 对查询进行清理和分解
         query = query.strip()
 
-        # 处理带引号的竞赛名称 - 改进匹配算法
-        competition_match = re.search(r'[""]?([^""]+?(?:专项赛|挑战赛|竞赛|大赛))[""]?', query)
+        # 处理竞赛名称 - 由于上层search方法已移除引号，这里直接匹配
+        competition_match = re.search(r'([^""]+?(?:专项赛|挑战赛|竞赛|大赛))', query)
         competition_name = None
         comp_alternatives = []
 
@@ -1045,15 +1049,14 @@ class RetrievalSystem:
             logger.info(f"从查询中提取到竞赛名称: {competition_name}")
 
             # 创建竞赛名称的替代形式
-            # 1. 去掉引号版本
-            clean_name = competition_name.replace('"', '').replace('"', '')
+            clean_name = competition_name
             comp_alternatives.append(clean_name)
 
-            # 2. 加引号版本
+            # 添加引号版本用于匹配可能包含引号的文件名
             quoted_name = f'"{clean_name}"'
             comp_alternatives.append(quoted_name)
 
-            # 3. 前缀处理 (例如针对"01_"未来校园"智能应用专项赛.txt"这种情况)
+            # 特殊处理未来校园
             if "未来校园" in clean_name:
                 comp_alternatives.append("未来校园智能应用专项赛")
                 comp_alternatives.append("未来校园")
@@ -1789,7 +1792,7 @@ class DocumentProcessingPipeline:
             logger.error(f"处理Excel文件时出错: {str(e)}")
             return []
 
-    def search_similar(self, query: str, top_k: int = 10, use_hybrid: bool = True) -> List[Dict[str, Any]]:
+    def search_similar(self, query: str, top_k: int = 8, use_hybrid: bool = True) -> List[Dict[str, Any]]:
         """
         搜索相似文档
 
@@ -1961,7 +1964,7 @@ class RAGSystem:
                  model_name: str = "glm-4",
                  embed_model_name: str = "all-MiniLM-L6-v2",
                  dense_weight: float = 0.7,
-                 top_k: int = 10):
+                 top_k: int = 8):
         """
         初始化RAG系统
 
@@ -2707,7 +2710,7 @@ def main():
     parser.add_argument("--query_file", default="", help="从文件读取查询内容")
 
     parser.add_argument("--temperature", type=float, default=0.7, help="生成温度")
-    parser.add_argument("--top_k", type=int, default=10, help="检索文档数量")
+    parser.add_argument("--top_k", type=int, default=8, help="检索文档数量")
 
     # 操作模式
     parser.add_argument("--build_kb", action="store_true", help="构建知识库")
