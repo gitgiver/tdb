@@ -1,4 +1,0 @@
-python question2.py --build_kb --data_dir=txts --output_dir=knowledge_base
-python question2.py --build_kb --excel_file=./result1.xlsx
-
-python question2.py --interactive 

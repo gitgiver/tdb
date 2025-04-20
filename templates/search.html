@@ -1,0 +1,764 @@
+{% extends "base.html" %}
+
+{% block title %}知识库搜索 - 知识库管理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">知识库搜索</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-body">
+                <form id="search-form" class="mb-0">
+                    <div class="input-group">
+                        <input type="text" id="search-input" class="form-control" placeholder="输入您的问题..." aria-label="搜索问题">
+                        <button class="btn btn-primary" type="submit" id="search-button">
+                            <i class="fas fa-search me-1"></i> 搜索
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3 mb-md-0">
+        <div class="card h-100">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">相关文档</h5>
+                <button class="btn btn-sm btn-outline-secondary" id="toggle-docs">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="card-body p-0" id="relevant-docs-container">
+                <div class="list-group list-group-flush" id="relevant-docs">
+                    <div class="list-group-item text-center text-muted py-4">
+                        <div>输入问题开始搜索</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">问答历史</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="chat-history" class="chat-container">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-robot fa-3x mb-3"></i>
+                        <p>您好！请输入您想了解的内容。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" id="export-history">
+                        <i class="fas fa-file-export me-1"></i> 导出历史
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" id="clear-history">
+                        <i class="fas fa-trash-alt me-1"></i> 清空历史
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 文档预览模态框 -->
+<div class="modal fade" id="document-modal" tabindex="-1" aria-labelledby="document-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="document-modal-label">文档内容</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <h6 id="document-name" class="mb-0"></h6>
+                    <span id="document-type" class="badge bg-secondary"></span>
+                </div>
+                <div id="document-content" class="border p-3 bg-light"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导出历史模态框 -->
+<div class="modal fade" id="export-modal" tabindex="-1" aria-labelledby="export-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="export-modal-label">导出问答历史</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="export-form">
+                    <div class="mb-3">
+                        <label for="export-format" class="form-label">导出格式</label>
+                        <select class="form-select" id="export-format" required>
+                            <option value="excel">Excel表格</option>
+                            <option value="markdown">Markdown文档</option>
+                            <option value="txt">文本文件</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="export-range" class="form-label">导出范围</label>
+                        <select class="form-select" id="export-range" required>
+                            <option value="all">所有历史记录</option>
+                            <option value="current">当前会话</option>
+                            <option value="custom">自定义时间范围</option>
+                        </select>
+                    </div>
+                    <div id="date-range-container" class="mb-3 d-none">
+                        <div class="row">
+                            <div class="col-6">
+                                <label for="start-date" class="form-label">开始日期</label>
+                                <input type="date" class="form-control" id="start-date">
+                            </div>
+                            <div class="col-6">
+                                <label for="end-date" class="form-label">结束日期</label>
+                                <input type="date" class="form-control" id="end-date">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="do-export">导出</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: 500px;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+    
+    .message {
+        margin-bottom: 1rem;
+        max-width: 80%;
+        position: relative;
+    }
+    
+    .user-message {
+        align-self: flex-end;
+        margin-left: auto;
+        background-color: #dcf8c6;
+        border-radius: 1rem 0 1rem 1rem;
+        padding: 0.8rem;
+    }
+    
+    .bot-message {
+        align-self: flex-start;
+        background-color: #f1f0f0;
+        border-radius: 0 1rem 1rem 1rem;
+        padding: 0.8rem;
+    }
+    
+    .message-time {
+        font-size: 0.8rem;
+        color: #999;
+        margin-top: 0.3rem;
+        text-align: right;
+    }
+    
+    .doc-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .doc-item:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+    
+    .doc-item-active {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+    
+    .message-content {
+        white-space: pre-line;
+        word-break: break-word;
+    }
+    
+    .message-loading {
+        padding: 0.8rem;
+        background-color: #f1f0f0;
+        border-radius: 0 1rem 1rem 1rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .loading-dots {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 0.5rem;
+    }
+    
+    .loading-dots span {
+        background-color: #666;
+        border-radius: 50%;
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin: 0 2px;
+        animation: loading 1.4s infinite ease-in-out both;
+    }
+    
+    .loading-dots span:nth-child(1) {
+        animation-delay: -0.32s;
+    }
+    
+    .loading-dots span:nth-child(2) {
+        animation-delay: -0.16s;
+    }
+    
+    @keyframes loading {
+        0%, 80%, 100% { 
+            transform: scale(0);
+        } 40% { 
+            transform: scale(1.0);
+        }
+    }
+    
+    /* 文档内容高亮 */
+    .highlight {
+        background-color: #FFEB3B;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+    
+    /* Markdown格式 */
+    .markdown-content h1, 
+    .markdown-content h2, 
+    .markdown-content h3, 
+    .markdown-content h4, 
+    .markdown-content h5, 
+    .markdown-content h6 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .markdown-content p {
+        margin-bottom: 0.5rem;
+    }
+    
+    .markdown-content ul, 
+    .markdown-content ol {
+        margin-bottom: 0.5rem;
+        padding-left: 1.5rem;
+    }
+    
+    .markdown-content pre {
+        background-color: #f8f9fa;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        overflow-x: auto;
+    }
+    
+    .markdown-content code {
+        background-color: #f8f9fa;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+    }
+    
+    /* 适应小屏幕 */
+    @media (max-width: 767.98px) {
+        .chat-container {
+            height: 400px;
+        }
+        
+        .message {
+            max-width: 90%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+$(document).ready(function() {
+    // 全局变量
+    let currentQuestion = '';
+    let loadingMessage = null;
+    let relevantDocs = [];
+    let chatHistory = [];
+    let searchInProgress = false;
+    
+    // 页面加载时立即加载历史记录
+    loadChatHistory();
+    
+    // 初始化UI状态
+    updateChatHistoryUI();
+    
+    // 搜索表单提交
+    $('#search-form').submit(function(e) {
+        e.preventDefault();
+        
+        const question = $('#search-input').val().trim();
+        if (!question || searchInProgress) {
+            return;
+        }
+        
+        currentQuestion = question;
+        $('#search-input').val('');
+        addUserMessage(question);
+        showLoadingMessage();
+        searchInProgress = true;
+        
+        // 搜索知识库
+        searchKnowledgeBase(question);
+    });
+    
+    // 相关文档切换显示
+    $('#toggle-docs').click(function() {
+        const container = $('#relevant-docs-container');
+        const icon = $(this).find('i');
+        
+        if (container.is(':visible')) {
+            container.slideUp();
+            icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        } else {
+            container.slideDown();
+            icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        }
+    });
+    
+    // 导出历史按钮
+    $('#export-history').click(function() {
+        // 设置当前日期为默认值
+        const today = new Date().toISOString().split('T')[0];
+        $('#end-date').val(today);
+        
+        // 设置一个月前的日期为默认开始日期
+        const monthAgo = new Date();
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        $('#start-date').val(monthAgo.toISOString().split('T')[0]);
+        
+        // 显示导出模态框
+        $('#export-modal').modal('show');
+    });
+    
+    // 导出范围变更
+    $('#export-range').change(function() {
+        if ($(this).val() === 'custom') {
+            $('#date-range-container').removeClass('d-none');
+        } else {
+            $('#date-range-container').addClass('d-none');
+        }
+    });
+    
+    // 执行导出
+    $('#do-export').click(function() {
+        const format = $('#export-format').val();
+        const range = $('#export-range').val();
+        let startDate = null;
+        let endDate = null;
+        
+        if (range === 'custom') {
+            startDate = $('#start-date').val();
+            endDate = $('#end-date').val();
+            
+            if (!startDate || !endDate) {
+                showToast('请选择完整的日期范围', 'warning');
+                return;
+            }
+        }
+        
+        // 执行导出操作
+        exportHistory(format, range, startDate, endDate);
+        
+        // 关闭模态框
+        $('#export-modal').modal('hide');
+    });
+    
+    // 清空历史
+    $('#clear-history').click(function() {
+        if (confirm('确定要清空所有聊天历史记录吗？此操作不可恢复。')) {
+            clearChatHistory();
+        }
+    });
+    
+    // 搜索知识库
+    function searchKnowledgeBase(question) {
+        $.ajax({
+            url: '/api/search',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ query: question }),
+            success: function(response) {
+                // 更新相关文档
+                updateRelevantDocs(response.relevant_documents || []);
+                
+                // 添加回答消息
+                removeLoadingMessage();
+                addBotMessage(response.answer || '抱歉，无法回答您的问题。');
+                
+                // 保存到历史记录
+                saveChatRecord(question, response.answer, response.relevant_documents);
+                
+                searchInProgress = false;
+            },
+            error: function(xhr) {
+                removeLoadingMessage();
+                let errorMsg = '抱歉，服务器发生错误，请稍后再试。';
+                
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error) {
+                        errorMsg = response.error;
+                    }
+                } catch (e) {
+                    console.error('解析错误响应失败:', e);
+                }
+                
+                addBotMessage(errorMsg);
+                searchInProgress = false;
+            }
+        });
+    }
+    
+    // 更新相关文档列表
+    function updateRelevantDocs(docs) {
+        relevantDocs = docs;
+        
+        if (!docs || docs.length === 0) {
+            $('#relevant-docs').html('<div class="list-group-item text-center text-muted py-4">未找到相关文档</div>');
+            return;
+        }
+        
+        let html = '';
+        docs.forEach((doc, index) => {
+            const fileIcon = getFileIcon(doc.file_name);
+            
+            html += `
+            <div class="list-group-item doc-item py-3" data-index="${index}">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <h6 class="mb-1 text-truncate" style="max-width: 80%;">
+                        <i class="${fileIcon} me-2"></i>
+                        ${doc.file_name}
+                    </h6>
+                    <span class="badge bg-primary">${Math.round(doc.score * 100)}%</span>
+                </div>
+                <p class="mb-1 small text-truncate">${doc.snippet || '无预览'}</p>
+            </div>
+            `;
+        });
+        
+        $('#relevant-docs').html(html);
+        
+        // 添加点击事件
+        $('.doc-item').click(function() {
+            const index = $(this).data('index');
+            showDocumentContent(index);
+            
+            // 高亮当前选中的文档
+            $('.doc-item').removeClass('doc-item-active');
+            $(this).addClass('doc-item-active');
+        });
+    }
+    
+    // 显示文档内容
+    function showDocumentContent(index) {
+        const doc = relevantDocs[index];
+        if (!doc) return;
+        
+        // 更新模态框内容
+        $('#document-name').text(doc.file_name);
+        $('#document-type').text(getFileType(doc.file_name));
+        
+        // 显示加载状态
+        $('#document-content').html('<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">加载中...</p></div>');
+        
+        // 打开模态框
+        $('#document-modal').modal('show');
+        
+        // 获取完整文档内容
+        $.ajax({
+            url: `/api/document_content/${encodeURIComponent(doc.file_name)}`,
+            type: 'GET',
+            success: function(response) {
+                let content = response.content || '无法加载文档内容';
+                
+                // 高亮关键词
+                if (currentQuestion && content) {
+                    const keywords = currentQuestion.split(/\s+/).filter(word => word.length > 1);
+                    keywords.forEach(keyword => {
+                        const regex = new RegExp(keyword, 'gi');
+                        content = content.replace(regex, match => `<span class="highlight">${match}</span>`);
+                    });
+                }
+                
+                // 使用Markdown渲染（如果是Markdown文件）
+                if (doc.file_name.toLowerCase().endsWith('.md')) {
+                    $('#document-content').html(`<div class="markdown-content">${marked.parse(content)}</div>`);
+                } else {
+                    $('#document-content').html(`<pre>${content}</pre>`);
+                }
+            },
+            error: function() {
+                $('#document-content').html('<div class="text-center text-danger py-3">无法加载文档内容</div>');
+            }
+        });
+    }
+    
+    // 添加用户消息
+    function addUserMessage(message) {
+        const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        
+        const messageHtml = `
+        <div class="message user-message">
+            <div class="message-content">${escapeHtml(message)}</div>
+            <div class="message-time">${time}</div>
+        </div>
+        `;
+        
+        addMessageToChat(messageHtml);
+    }
+    
+    // 添加机器人消息
+    function addBotMessage(message) {
+        const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        
+        // 使用Markdown渲染
+        const renderedMessage = marked.parse(message);
+        
+        const messageHtml = `
+        <div class="message bot-message">
+            <div class="message-content markdown-content">${renderedMessage}</div>
+            <div class="message-time">${time}</div>
+        </div>
+        `;
+        
+        addMessageToChat(messageHtml);
+    }
+    
+    // 显示加载消息
+    function showLoadingMessage() {
+        const loadingHtml = `
+        <div class="message bot-message message-loading" id="loading-message">
+            <span>思考中</span>
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        `;
+        
+        loadingMessage = $(loadingHtml);
+        addMessageToChat(loadingMessage);
+    }
+    
+    // 移除加载消息
+    function removeLoadingMessage() {
+        if (loadingMessage) {
+            loadingMessage.remove();
+            loadingMessage = null;
+        }
+    }
+    
+    // 添加消息到聊天界面
+    function addMessageToChat(messageHtml) {
+        const chatHistory = $('#chat-history');
+        
+        // 如果是第一条消息，清除默认提示
+        if (chatHistory.find('.message').length === 0 && chatHistory.find('.text-center').length > 0) {
+            chatHistory.empty();
+        }
+        
+        chatHistory.append(messageHtml);
+        
+        // 滚动到底部
+        chatHistory.scrollTop(chatHistory[0].scrollHeight);
+    }
+    
+    // 加载聊天历史记录
+    function loadChatHistory() {
+        // 显示加载中提示
+        $("#chat-history").append('<div class="text-center my-3 loading-history"><i class="fas fa-spinner fa-spin"></i> 正在加载历史记录...</div>');
+        
+        $.ajax({
+            url: '/api/chat_history',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                // 移除加载提示
+                $(".loading-history").remove();
+                
+                if (response.success && response.history && response.history.length > 0) {
+                    // 清空当前聊天记录（避免重复加载）
+                    $("#chat-history").empty();
+                    
+                    // 添加历史记录
+                    response.history.forEach(function(record) {
+                        if (record.question && record.answer) {
+                            // 添加用户问题
+                            addUserMessage(record.question, false, record.timestamp);
+                            
+                            // 添加机器人回答
+                            addBotMessage(record.answer, false, record.timestamp);
+                        }
+                    });
+                    
+                    // 滚动到底部
+                    scrollToBottom();
+                    
+                    // 更新UI状态
+                    updateChatHistoryUI();
+                } else if (response.history && response.history.length === 0) {
+                    // 没有历史记录
+                    $("#chat-history").empty();
+                    $("#chat-history").append('<div class="text-center text-muted my-3">暂无聊天记录</div>');
+                } else {
+                    console.error("加载历史记录失败:", response.error);
+                    toastr.error("加载历史记录失败: " + (response.error || "未知错误"));
+                }
+            },
+            error: function(xhr, status, error) {
+                $(".loading-history").remove();
+                console.error("加载历史记录请求失败:", error);
+                toastr.error("加载历史记录请求失败: " + error);
+            }
+        });
+    }
+    
+    // 保存聊天记录
+    function saveChatRecord(question, answer) {
+        // 准备当前时间
+        const timestamp = new Date().toISOString();
+        
+        $.ajax({
+            url: '/api/save_chat',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                question: question,
+                answer: answer,
+                timestamp: timestamp
+            }),
+            success: function(response) {
+                if (response.success) {
+                    console.log("聊天记录已保存");
+                    // 更新UI状态
+                    updateChatHistoryUI();
+                } else {
+                    console.error("保存聊天记录失败:", response.error);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("保存聊天记录请求失败:", error);
+            }
+        });
+        
+        return timestamp;
+    }
+    
+    // 更新聊天历史UI状态
+    function updateChatHistoryUI() {
+        // 检查是否有聊天记录
+        const hasHistory = $("#chat-history .chat-message").length > 0;
+        
+        // 更新导出和清空按钮状态
+        $("#export-history-btn, #clear-history-btn").prop("disabled", !hasHistory);
+        
+        // 如果没有历史记录且没有"暂无聊天记录"提示，则添加
+        if (!hasHistory && $("#chat-history .text-muted").length === 0) {
+            $("#chat-history").append('<div class="text-center text-muted my-3">暂无聊天记录</div>');
+        }
+    }
+    
+    // 清空聊天历史
+    function clearChatHistory() {
+        $.ajax({
+            url: '/api/clear_chat_history',
+            type: 'POST',
+            success: function() {
+                // 清空界面
+                $('#chat-history').html(`
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-robot fa-3x mb-3"></i>
+                    <p>您好！请输入您想了解的内容。</p>
+                </div>
+                `);
+                
+                // 显示提示
+                showToast('聊天历史已清空', 'success');
+            },
+            error: function() {
+                showToast('清空历史记录失败', 'danger');
+            }
+        });
+    }
+    
+    // 导出历史记录
+    function exportHistory(format, range, startDate, endDate) {
+        const url = new URL('/api/export_history', window.location.origin);
+        url.searchParams.append('format', format);
+        url.searchParams.append('range', range);
+        
+        if (startDate) url.searchParams.append('start_date', startDate);
+        if (endDate) url.searchParams.append('end_date', endDate);
+        
+        // 使用下载链接
+        window.location.href = url.toString();
+    }
+    
+    // 获取文件图标
+    function getFileIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        switch (ext) {
+            case 'pdf': return 'fas fa-file-pdf text-danger';
+            case 'docx':
+            case 'doc': return 'fas fa-file-word text-primary';
+            case 'txt': return 'fas fa-file-alt text-secondary';
+            case 'md': return 'fas fa-file-code text-warning';
+            case 'xlsx':
+            case 'xls': return 'fas fa-file-excel text-success';
+            default: return 'fas fa-file text-secondary';
+        }
+    }
+    
+    // 获取文件类型
+    function getFileType(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        switch (ext) {
+            case 'pdf': return 'PDF文档';
+            case 'docx':
+            case 'doc': return 'Word文档';
+            case 'txt': return '文本文件';
+            case 'md': return 'Markdown文档';
+            case 'xlsx':
+            case 'xls': return 'Excel表格';
+            default: return '未知类型';
+        }
+    }
+    
+    // 转义HTML
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+});
+</script>
+{% endblock %} 

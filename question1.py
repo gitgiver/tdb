@@ -102,13 +102,13 @@ def extract_text_from_pdf(pdf_path):
     for page_num in range(0, len(doc)):
         page_text = extract_text_with_pymupdf(pdf_path, page_num)
         full_text += page_text + "\n"
-    # 假设 full_text 是你要保存的文本内容
-    # 写入文件
+    
+    # 处理文本内容
     fullText = full_text
     full_text = clean_newlines(full_text)
+    
     with open(fr'txts\{pdf_path[4:-4]}.txt', 'w', encoding='utf-8') as file:
         file.write(full_text)
-
     return fullText
 
 def extract_organization(text):
@@ -174,7 +174,7 @@ def extract_competition_info(text: str) -> Dict[str, Optional[str]]:
 
     # 提取竞赛名称
     name_patterns = [
-        r'(\d{4}\s*年（第\d+\s*届）[“”](.*?)挑战赛)',
+        r'(\d{4}\s*年（第\d+\s*届）[""](.*?)挑战赛)',
         r"第(.)[\s\S]*?挑战赛"
     ]
     for pattern in name_patterns:
@@ -183,7 +183,7 @@ def extract_competition_info(text: str) -> Dict[str, Optional[str]]:
             if len(name_match.group(1).strip()) > 5:
                 result['competition_name'] = re.sub(r'\s+', '',name_match.group(1).strip())
             else:
-                result['competition_name'] = name_match.group(0).strip().split(" ")[0].split('“')[0]
+                result['competition_name'] = name_match.group(0).strip().split(" ")[0].split('"')[0]
             break
 
 
@@ -193,7 +193,7 @@ def extract_competition_info(text: str) -> Dict[str, Optional[str]]:
         r"专项赛名称[:：]\s*([^\n]+)",
         r"第七届全国青少年人工智能创新挑战赛\s*([^\n]+)\s*专项赛",
         r"([^\n]+)专项赛参赛手册",
-        r'(\d{4}\s*年（第\d+\s*届）[“”](.*?)挑战赛)'
+        r'(\d{4}\s*年（第\d+\s*届）[""](.*?)挑战赛)'
     ]
     for pattern in track_patterns:
         track_match = re.search(pattern, text)
@@ -236,16 +236,16 @@ def extract_competition_info(text: str) -> Dict[str, Optional[str]]:
         website_match = re.search(pattern, text)
         if website_match:
             url=website_match.group(1)
-            url = re.sub(r'[；，”。"“\u4e00-\u9fa5]', '', url)
+            url = re.sub(r'[；，""。""\u4e00-\u9fa5]', '', url)
             # 去除连续空白符
             url = re.sub(r'\s+', '', url)
             # 去除末尾的标点
-            url = re.sub(r'[./”“]+$', '', url)
+            url = re.sub(r'[./""""]+$', '', url)
             # 去除末尾斜杠
             url = re.sub(r'/+$', '', url)
             # 去除端口号（如:8080）
             url = re.sub(r':\d+$', '', url)
-            result['official_website'] = re.sub(r'[；，”。"“\u4e00-\u9fa5]', '', re.sub(r'\s+', '', url))
+            result['official_website'] = re.sub(r'[；，""。""\u4e00-\u9fa5]', '', re.sub(r'\s+', '', url))
             break
 
     return result
@@ -294,8 +294,8 @@ def process_pdf_files(directory: str):
 
     # 保存到Excel
     if all_data:
-        save_to_excel(all_data, "result_1.xlsx")
-        print("数据已保存到 result_1.xlsx")
+        save_to_excel(all_data, r"txts\result_1.xlsx")
+        print("数据已保存到 txts\result_1.xlsx")
 
 
 if __name__ == "__main__":

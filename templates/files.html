@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block title %}文件管理 - 知识库管理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">知识库文件管理</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">上传文件</h5>
+            </div>
+            <div class="card-body">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file-upload" class="form-label">选择文件</label>
+                        <input class="form-control" type="file" id="file-upload" name="file" multiple>
+                        <div class="form-text">支持的格式: PDF, DOCX, TXT, MD, XLS/XLSX</div>
+                    </div>
+                    <div class="progress mb-3 d-none" id="upload-progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="upload-btn">
+                        <i class="fas fa-upload me-1"></i> 上传文件
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>文件列表</h5>
+                    <div class="d-flex">
+                        <div class="input-group me-2">
+                            <input type="text" id="fileSearchInput" class="form-control" placeholder="搜索文件...">
+                            <button class="btn btn-outline-light" type="button" id="fileSearchButton">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                        <button id="processUnindexedButton" class="btn btn-warning me-2" type="button">
+                            <i class="bi bi-database-add me-1"></i>处理未索引文件
+                        </button>
+                        <button id="refreshFilesButton" class="btn btn-light" type="button">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width: 50px">#</th>
+                                <th scope="col">文件名</th>
+                                <th scope="col" style="width: 150px">类型</th>
+                                <th scope="col" style="width: 180px">上传时间</th>
+                                <th scope="col" style="width: 150px">大小</th>
+                                <th scope="col" style="width: 150px">状态</th>
+                                <th scope="col" style="width: 120px">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="file-list">
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                    <p class="mt-2">加载文件列表中...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 文件详情模态框 -->
+<div class="modal fade" id="file-detail-modal" tabindex="-1" aria-labelledby="fileDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fileDetailModalLabel">文件详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>基本信息</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 120px">文件名</th>
+                                    <td id="detail-filename"></td>
+                                </tr>
+                                <tr>
+                                    <th>路径</th>
+                                    <td id="detail-path"></td>
+                                </tr>
+                                <tr>
+                                    <th>大小</th>
+                                    <td id="detail-size"></td>
+                                </tr>
+                                <tr>
+                                    <th>上传时间</th>
+                                    <td id="detail-time"></td>
+                                </tr>
+                                <tr>
+                                    <th>索引状态</th>
+                                    <td id="detail-status"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h6>文件内容预览</h6>
+                    <div class="border rounded p-3 bg-light">
+                        <pre id="file-content-preview" style="max-height: 300px; overflow-y: auto;">加载内容预览中...</pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-danger" id="btn-delete-in-modal">
+                    <i class="fas fa-trash-alt me-1"></i> 删除文件
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 加载文件列表
+    loadFileList();
+    
+    // 刷新文件列表
+    $('#refreshFilesButton').click(function() {
+        loadFileList();
+    });
+    
+    // 文件搜索
+    $('#fileSearchInput').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('#file-list tr').each(function() {
+            const fileName = $(this).find('td:nth-child(2)').text().toLowerCase();
+            if (fileName.includes(searchTerm)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+    
+    // 文件搜索按钮点击事件
+    $('#fileSearchButton').click(function() {
+        const searchTerm = $('#fileSearchInput').val().toLowerCase();
+        $('#file-list tr').each(function() {
+            const fileName = $(this).find('td:nth-child(2)').text().toLowerCase();
+            if (fileName.includes(searchTerm)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+    
+    // 文件上传
+    $('#upload-form').submit(function(e) {
+        e.preventDefault();
+        
+        const fileInput = $('#file-upload')[0];
+        if (fileInput.files.length === 0) {
+            showToast('请先选择文件', 'warning');
+            return;
+        }
+        
+        const formData = new FormData();
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append('files', fileInput.files[i]);
+        }
+        
+        // 显示进度条
+        $('#upload-progress').removeClass('d-none');
+        
+        // 禁用上传按钮
+        $('#upload-btn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>上传中...');
+        
+        $.ajax({
+            url: '/api/upload_files',
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            xhr: function() {
+                const xhr = new window.XMLHttpRequest();
+                xhr.upload.addEventListener('progress', function(e) {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        $('#upload-progress .progress-bar').css('width', percent + '%').attr('aria-valuenow', percent);
+                    }
+                });
+                return xhr;
+            },
+            success: function(response) {
+                showToast('文件上传成功', 'success');
+                $('#upload-form')[0].reset();
+                $('#upload-progress').addClass('d-none');
+                $('#upload-btn').prop('disabled', false).html('<i class="fas fa-upload me-1"></i> 上传文件');
+                
+                // 刷新文件列表
+                loadFileList();
+            },
+            error: function(xhr) {
+                showToast('文件上传失败: ' + (xhr.responseJSON?.error || '未知错误'), 'danger');
+                $('#upload-progress').addClass('d-none');
+                $('#upload-btn').prop('disabled', false).html('<i class="fas fa-upload me-1"></i> 上传文件');
+            }
+        });
+    });
+    
+    // 加载文件列表
+    function loadFileList() {
+        $('#file-list').html(`
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">加载文件列表中...</p>
+                </td>
+            </tr>
+        `);
+        
+        $.ajax({
+            url: '/api/files',
+            type: 'GET',
+            success: function(response) {
+                if (!response.files || response.files.length === 0) {
+                    $('#file-list').html(`
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                                <p>知识库中还没有文件</p>
+                            </td>
+                        </tr>
+                    `);
+                    return;
+                }
+                
+                let html = '';
+                response.files.forEach((file, index) => {
+                    const statusBadge = file.indexed ? 
+                        '<span class="badge bg-success">已索引</span>' : 
+                        '<span class="badge bg-warning">未索引</span>';
+                    
+                    html += `
+                    <tr data-file-name="${file.name}" data-file-path="${file.path || ''}">
+                        <td>${index + 1}</td>
+                        <td class="text-truncate" style="max-width: 250px;">${file.name}</td>
+                        <td><span class="badge bg-secondary">${getFileTypeLabel(file.name)}</span></td>
+                        <td>${formatDate(file.modified)}</td>
+                        <td>${formatFileSize(file.size)}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info view-file" data-file-name="${file.name}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-file" data-file-name="${file.name}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    `;
+                });
+                
+                $('#file-list').html(html);
+                
+                // 绑定查看文件事件
+                $('.view-file').click(function() {
+                    const fileName = $(this).data('file-name');
+                    showFileDetails(fileName);
+                });
+                
+                // 绑定删除文件事件
+                $('.delete-file').click(function() {
+                    const fileName = $(this).data('file-name');
+                    deleteFile(fileName);
+                });
+            },
+            error: function(xhr) {
+                showToast('加载文件列表失败: ' + (xhr.responseJSON?.error || '未知错误'), 'danger');
+                $('#file-list').html(`
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-danger">
+                            <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                            <p>加载文件列表失败</p>
+                        </td>
+                    </tr>
+                `);
+            }
+        });
+    }
+    
+    // 显示文件详情
+    function showFileDetails(fileName) {
+        // 设置加载状态
+        $('#detail-filename, #detail-path, #detail-size, #detail-time, #detail-status').text('加载中...');
+        $('#file-content-preview').text('加载内容预览中...');
+        
+        // 设置删除按钮文件名
+        $('#btn-delete-in-modal').data('file-name', fileName);
+        
+        // 获取文件详情
+        $.ajax({
+            url: `/api/file_details/${fileName}`,
+            type: 'GET',
+            success: function(response) {
+                const file = response.file;
+                $('#detail-filename').text(file.name);
+                $('#detail-path').text(file.path);
+                $('#detail-size').text(formatFileSize(file.size));
+                $('#detail-time').text(formatDate(file.modified));
+                $('#detail-status').html(file.indexed ? 
+                    '<span class="badge bg-success">已索引</span>' : 
+                    '<span class="badge bg-warning">未索引</span>');
+                
+                // 获取文件内容预览
+                if (file.preview && file.preview.length > 0) {
+                    $('#file-content-preview').text(file.preview);
+                } else {
+                    $('#file-content-preview').text('该文件暂无内容预览');
+                }
+            },
+            error: function(xhr) {
+                $('#detail-filename, #detail-path, #detail-size, #detail-time, #detail-status').text('加载失败');
+                $('#file-content-preview').text('内容预览加载失败: ' + (xhr.responseJSON?.error || '未知错误'));
+            }
+        });
+        
+        // 显示模态框
+        new bootstrap.Modal(document.getElementById('file-detail-modal')).show();
+    }
+    
+    // 模态框中的删除按钮
+    $('#btn-delete-in-modal').click(function() {
+        const fileName = $(this).data('file-name');
+        $('#file-detail-modal').modal('hide');
+        deleteFile(fileName);
+    });
+    
+    // 删除文件
+    function deleteFile(fileName) {
+        if (confirm('确定要删除这个文件吗？删除后无法恢复。')) {
+            $.ajax({
+                url: `/api/delete_file/${fileName}`,
+                type: 'DELETE',
+                success: function(response) {
+                    showToast('文件删除成功', 'success');
+                    loadFileList();
+                },
+                error: function(xhr) {
+                    showToast('文件删除失败: ' + (xhr.responseJSON?.error || '未知错误'), 'danger');
+                }
+            });
+        }
+    }
+    
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // 格式化日期
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+    
+    // 获取文件类型标签
+    function getFileTypeLabel(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        switch (ext) {
+            case 'pdf': return 'PDF';
+            case 'docx': return 'Word';
+            case 'doc': return 'Word';
+            case 'txt': return 'Text';
+            case 'md': return 'Markdown';
+            case 'xlsx': return 'Excel';
+            case 'xls': return 'Excel';
+            default: return ext.toUpperCase();
+        }
+    }
+
+    // 显示加载状态的函数
+    function showLoading(show, message = '加载中...') {
+        if (show) {
+            // 如果没有loading元素则创建一个
+            if ($('#global-loading').length === 0) {
+                $('body').append(`
+                    <div id="global-loading" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
+                         style="background-color: rgba(0,0,0,0.3); z-index: 9999;">
+                        <div class="card p-4">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border text-primary me-3" role="status"></div>
+                                <div id="loading-message">${message}</div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            } else {
+                $('#loading-message').text(message);
+                $('#global-loading').show();
+            }
+        } else {
+            $('#global-loading').hide();
+        }
+    }
+
+    // 处理未索引文件点击事件
+    $('#processUnindexedButton').click(function() {
+        // 检查是否有未索引文件
+        const unindexedCount = $('.badge.bg-warning:contains("未索引")').length;
+        
+        if (unindexedCount === 0) {
+            showToast('没有发现未索引的文件', 'info');
+            return;
+        }
+        
+        // 显示处理中的消息
+        showToast(`正在处理${unindexedCount}个未索引文件，请稍候...`, 'info');
+        
+        // 禁用按钮
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>处理中...');
+        
+        // 发送处理请求
+        $.ajax({
+            url: '/api/process_unindexed_files',
+            type: 'POST',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    if (response.total_processed > 0) {
+                        showToast(`成功处理了${response.total_processed}个文件`, 'success');
+                    } else {
+                        showToast(response.message, 'info');
+                    }
+                    
+                    // 如果有失败的文件，显示警告
+                    if (response.failed_files && response.failed_files.length > 0) {
+                        showToast(`${response.failed_files.length}个文件处理失败`, 'warning');
+                    }
+                    
+                    // 刷新文件列表
+                    loadFileList();
+                } else {
+                    showToast(response.error || '处理文件时出错', 'danger');
+                }
+                
+                // 恢复按钮状态
+                $('#processUnindexedButton').prop('disabled', false)
+                    .html('<i class="bi bi-database-add me-1"></i>处理未索引文件');
+            },
+            error: function(xhr, status, error) {
+                showToast('请求失败: ' + error, 'danger');
+                
+                // 恢复按钮状态
+                $('#processUnindexedButton').prop('disabled', false)
+                    .html('<i class="bi bi-database-add me-1"></i>处理未索引文件');
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}主页 - 知识库管理系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">知识库管理系统</h2>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3 mb-md-0">
+        <div class="card h-100 border-primary">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-file-alt fa-3x text-primary"></i>
+                </div>
+                <div>
+                    <h6 class="card-title mb-1">知识库文档</h6>
+                    <h2 class="mb-0" id="total-files">--</h2>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0">
+                <a href="/files" class="btn btn-sm btn-outline-primary">管理文件</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3 mb-md-0">
+        <div class="card h-100 border-success">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-database fa-3x text-success"></i>
+                </div>
+                <div>
+                    <h6 class="card-title mb-1">索引文档</h6>
+                    <h2 class="mb-0" id="indexed-files">--</h2>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0">
+                <a href="/files" class="btn btn-sm btn-outline-success">查看详情</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-info">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3">
+                    <i class="fas fa-question-circle fa-3x text-info"></i>
+                </div>
+                <div>
+                    <h6 class="card-title mb-1">历史问答</h6>
+                    <h2 class="mb-0" id="qa-records">--</h2>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0">
+                <a href="/search" class="btn btn-sm btn-outline-info">查询知识库</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">系统状态</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <tbody>
+                            <tr>
+                                <th style="width: 200px;">检索系统状态</th>
+                                <td id="retrieval-status"><span class="spinner-border spinner-border-sm text-secondary me-2" role="status"></span> 检查中...</td>
+                            </tr>
+                            <tr>
+                                <th>向量模型</th>
+                                <td id="vector-model"><span class="spinner-border spinner-border-sm text-secondary me-2" role="status"></span> 检查中...</td>
+                            </tr>
+                            <tr>
+                                <th>索引路径</th>
+                                <td id="index-path"><span class="spinner-border spinner-border-sm text-secondary me-2" role="status"></span> 检查中...</td>
+                            </tr>
+                            <tr>
+                                <th>索引更新时间</th>
+                                <td id="index-updated-time"><span class="spinner-border spinner-border-sm text-secondary me-2" role="status"></span> 检查中...</td>
+                            </tr>
+                            <tr>
+                                <th>系统启动时间</th>
+                                <td id="system-start-time"><span class="spinner-border spinner-border-sm text-secondary me-2" role="status"></span> 检查中...</td>
+                            </tr>
+                            <tr>
+                                <th>监控状态</th>
+                                <td>
+                                    <span id="status-badge" class="badge bg-danger">已停止</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 监控控制卡片 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">监控控制</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">监控服务可以自动对上传的文件进行索引，确保知识库索引保持最新状态。</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="initial-scan" checked>
+                            <label class="form-check-label" for="initial-scan">启动时执行初始扫描（索引所有现有文件）</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">模型选择:</span>
+                            <select class="form-select form-select-sm" id="model-select">
+                                <option value="all-MiniLM-L6-v2" selected>all-MiniLM-L6-v2 (默认)</option>
+                                <option value="paraphrase-multilingual-MiniLM-L12-v2">paraphrase-multilingual-MiniLM-L12-v2</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button id="btn-start" class="btn btn-success me-2">
+                        <i class="fas fa-play me-1"></i> 启动监控
+                    </button>
+                    <button id="btn-stop" class="btn btn-danger" disabled>
+                        <i class="fas fa-stop me-1"></i> 停止监控
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">文件类型分布</h5>
+            </div>
+            <div class="card-body">
+                <div id="file-type-chart" style="height: 250px;" class="d-flex align-items-center justify-content-center">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <span class="ms-2">加载中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">最近上传的文件</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="recent-files">
+                    <div class="list-group-item d-flex justify-content-center align-items-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span class="ms-2">加载中...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <a href="/files" class="btn btn-sm btn-outline-primary">查看所有文件</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(document).ready(function() {
+    // 加载系统概览数据
+    loadSystemOverview();
+    
+    // 加载系统状态
+    loadSystemStatus();
+    
+    // 加载文件类型分布
+    loadFileTypeDistribution();
+    
+    // 加载最近上传的文件
+    loadRecentFiles();
+    
+    // 每60秒刷新一次数据
+    setInterval(function() {
+        loadSystemOverview();
+        loadSystemStatus();
+    }, 60000);
+    
+    // 启动监控服务
+    $('#btn-start').click(function() {
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>启动中...');
+        
+        const initialScan = $('#initial-scan').is(':checked');
+        const modelName = $('#model-select').val();
+        
+        $.ajax({
+            url: '/api/start_monitoring',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 
+                initial_scan: initialScan,
+                model_name: modelName
+            }),
+            success: function(response) {
+                if (response.success) {
+                    showToast('监控服务已启动成功', 'success');
+                    $('#status-badge').removeClass('bg-danger').addClass('bg-success').text('运行中');
+                    $('#btn-start').prop('disabled', true).html('<i class="fas fa-play me-1"></i> 启动监控');
+                    $('#btn-stop').prop('disabled', false);
+                    // 刷新系统状态
+                    loadSystemStatus();
+                } else {
+                    showToast('启动监控服务失败', 'danger');
+                    $('#btn-start').prop('disabled', false).html('<i class="fas fa-play me-1"></i> 启动监控');
+                }
+            },
+            error: function(xhr) {
+                showToast('启动监控服务出错: ' + (xhr.responseJSON?.error || '未知错误'), 'danger');
+                $('#btn-start').prop('disabled', false).html('<i class="fas fa-play me-1"></i> 启动监控');
+            }
+        });
+    });
+    
+    // 停止监控服务
+    $('#btn-stop').click(function() {
+        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>停止中...');
+        
+        $.ajax({
+            url: '/api/stop_monitoring',
+            type: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    showToast('监控服务已停止', 'success');
+                    $('#status-badge').removeClass('bg-success').addClass('bg-danger').text('已停止');
+                    $('#btn-stop').prop('disabled', true).html('<i class="fas fa-stop me-1"></i> 停止监控');
+                    $('#btn-start').prop('disabled', false);
+                    // 刷新系统状态
+                    loadSystemStatus();
+                } else {
+                    showToast('停止监控服务失败', 'danger');
+                    $('#btn-stop').prop('disabled', false).html('<i class="fas fa-stop me-1"></i> 停止监控');
+                }
+            },
+            error: function(xhr) {
+                showToast('停止监控服务出错: ' + (xhr.responseJSON?.error || '未知错误'), 'danger');
+                $('#btn-stop').prop('disabled', false).html('<i class="fas fa-stop me-1"></i> 停止监控');
+            }
+        });
+    });
+    
+    // 加载系统概览数据
+    function loadSystemOverview() {
+        $.ajax({
+            url: '/api/system_overview',
+            type: 'GET',
+            success: function(response) {
+                $('#total-files').text(response.total_files || 0);
+                $('#indexed-files').text(response.indexed_files || 0);
+                $('#qa-records').text(response.qa_records || 0);
+            },
+            error: function() {
+                $('#total-files, #indexed-files, #qa-records').text('--');
+            }
+        });
+    }
+    
+    // 加载系统状态
+    function loadSystemStatus() {
+        $.ajax({
+            url: '/api/system_status',
+            type: 'GET',
+            success: function(response) {
+                // 检索系统状态
+                if (response.retrieval_ready) {
+                    $('#retrieval-status').html('<span class="badge bg-success me-2">正常</span> 检索系统已就绪');
+                } else {
+                    $('#retrieval-status').html('<span class="badge bg-danger me-2">异常</span> 检索系统未就绪');
+                }
+                
+                // 向量模型
+                $('#vector-model').text(response.vector_model || '未知');
+                
+                // 索引路径
+                $('#index-path').text(response.index_path || '未知');
+                
+                // 索引更新时间
+                if (response.index_updated_time) {
+                    $('#index-updated-time').text(formatDateTime(response.index_updated_time));
+                } else {
+                    $('#index-updated-time').text('未知');
+                }
+                
+                // 系统启动时间
+                if (response.system_start_time) {
+                    $('#system-start-time').text(formatDateTime(response.system_start_time));
+                } else {
+                    $('#system-start-time').text('未知');
+                }
+                
+                // 监控状态
+                if (response.is_monitoring) {
+                    $('#status-badge').removeClass('bg-danger').addClass('bg-success').text('运行中');
+                    $('#btn-start').prop('disabled', true);
+                    $('#btn-stop').prop('disabled', false);
+                } else {
+                    $('#status-badge').removeClass('bg-success').addClass('bg-danger').text('已停止');
+                    $('#btn-start').prop('disabled', false);
+                    $('#btn-stop').prop('disabled', true);
+                }
+            },
+            error: function() {
+                $('#retrieval-status').html('<span class="badge bg-danger me-2">异常</span> 无法获取系统状态');
+                $('#vector-model, #index-path, #index-updated-time, #system-start-time').text('--');
+                $('#status-badge').removeClass('bg-success').addClass('bg-danger').text('未知');
+            }
+        });
+    }
+    
+    // 加载文件类型分布
+    function loadFileTypeDistribution() {
+        $.ajax({
+            url: '/api/file_type_distribution',
+            type: 'GET',
+            success: function(response) {
+                if (!response.data || response.data.length === 0) {
+                    $('#file-type-chart').html('<div class="text-center text-muted">暂无数据</div>');
+                    return;
+                }
+                
+                // 准备图表数据
+                const labels = response.data.map(item => item.file_type);
+                const data = response.data.map(item => item.count);
+                const backgroundColors = [
+                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+                    '#5a5c69', '#6f42c1', '#fd7e14', '#20c997', '#17a2b8'
+                ];
+                
+                // 清除加载状态
+                $('#file-type-chart').html('');
+                
+                // 创建图表
+                const ctx = document.createElement('canvas');
+                $('#file-type-chart').append(ctx);
+                
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: backgroundColors.slice(0, data.length),
+                            hoverBackgroundColor: backgroundColors.slice(0, data.length),
+                            hoverBorderColor: "rgba(234, 236, 244, 1)",
+                        }],
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        cutoutPercentage: 70,
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltips: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        },
+                    },
+                });
+            },
+            error: function() {
+                $('#file-type-chart').html('<div class="text-center text-danger">加载失败</div>');
+            }
+        });
+    }
+    
+    // 加载最近上传的文件
+    function loadRecentFiles() {
+        $.ajax({
+            url: '/api/recent_files',
+            type: 'GET',
+            success: function(response) {
+                if (!response.files || response.files.length === 0) {
+                    $('#recent-files').html('<div class="list-group-item text-center text-muted py-4">暂无文件</div>');
+                    return;
+                }
+                
+                let html = '';
+                response.files.forEach(file => {
+                    const fileIcon = getFileIcon(file.name);
+                    const statusBadge = file.indexed ? 
+                        '<span class="badge bg-success ms-2">已索引</span>' : 
+                        '<span class="badge bg-warning ms-2">未索引</span>';
+                    
+                    html += `
+                    <a href="/files" class="list-group-item list-group-item-action py-3">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <i class="${fileIcon} me-2"></i>
+                                <span class="text-truncate" style="max-width: 300px; display: inline-block; vertical-align: middle;">${file.name}</span>
+                                ${statusBadge}
+                            </div>
+                            <small class="text-muted">${formatTimeAgo(file.uploaded_at)}</small>
+                        </div>
+                    </a>
+                    `;
+                });
+                
+                $('#recent-files').html(html);
+            },
+            error: function() {
+                $('#recent-files').html('<div class="list-group-item text-center text-danger py-4">加载失败</div>');
+            }
+        });
+    }
+    
+    // 格式化日期时间
+    function formatDateTime(dateTimeStr) {
+        if (!dateTimeStr) return '';
+        const date = new Date(dateTimeStr);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+    
+    // 格式化时间为"多久前"
+    function formatTimeAgo(dateTimeStr) {
+        if (!dateTimeStr) return '';
+        
+        const date = new Date(dateTimeStr);
+        const now = new Date();
+        const diffSeconds = Math.floor((now - date) / 1000);
+        
+        if (diffSeconds < 60) {
+            return `${diffSeconds}秒前`;
+        }
+        
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        if (diffMinutes < 60) {
+            return `${diffMinutes}分钟前`;
+        }
+        
+        const diffHours = Math.floor(diffMinutes / 60);
+        if (diffHours < 24) {
+            return `${diffHours}小时前`;
+        }
+        
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 30) {
+            return `${diffDays}天前`;
+        }
+        
+        const diffMonths = Math.floor(diffDays / 30);
+        if (diffMonths < 12) {
+            return `${diffMonths}个月前`;
+        }
+        
+        const diffYears = Math.floor(diffMonths / 12);
+        return `${diffYears}年前`;
+    }
+    
+    // 获取文件图标
+    function getFileIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        switch (ext) {
+            case 'pdf': return 'fas fa-file-pdf text-danger';
+            case 'docx':
+            case 'doc': return 'fas fa-file-word text-primary';
+            case 'txt': return 'fas fa-file-alt text-secondary';
+            case 'md': return 'fas fa-file-code text-warning';
+            case 'xlsx':
+            case 'xls': return 'fas fa-file-excel text-success';
+            default: return 'fas fa-file text-secondary';
+        }
+    }
+});
+</script>
+{% endblock %} 
